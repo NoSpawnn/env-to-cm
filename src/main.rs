@@ -13,6 +13,8 @@ struct Args {
 
     #[arg(long)]
     ignore_whitespace: bool,
+    #[arg(long)]
+    ignore_comments: bool,
 }
 
 fn main() -> io::Result<()> {
@@ -21,7 +23,7 @@ fn main() -> io::Result<()> {
     let data = std::fs::read_to_string(&args.infile)?;
 
     let parse_config = env_to_cm::ParseConfig {
-        ignore_comments: args.ignore_whitespace,
+        ignore_comments: args.ignore_comments,
         ignore_whitespace: args.ignore_whitespace,
     };
 
@@ -36,7 +38,9 @@ fn main() -> io::Result<()> {
                     line
                 )
             }
-            env_to_cm::ParseError::Empty => todo!(),
+            env_to_cm::ParseError::Empty => {
+                panic!("Input was empty, nothing to convert")
+            }
         },
     };
 
