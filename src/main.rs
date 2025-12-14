@@ -12,7 +12,7 @@ struct Args {
     /// Output .yaml, if not provided will print to stdout
     outfile: Option<PathBuf>,
 
-    /// Name to put in the metadata.name field of the generated configmap, default infile filename
+    /// Name to put in the metadata.name field of the generated configmap, defaults to outfile filename, falls back to empty
     #[arg(short = 'n')]
     configmap_name: Option<String>,
 
