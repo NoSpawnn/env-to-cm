@@ -20,10 +20,10 @@
 ## Status/Todos
 
 - [x] Basic translation of `.env` to `ConfigMap` yaml
-- [ ] Dead text preservation
-    - [ ] Preserve whitespace
-    - [ ] Preserve comments
-    - [ ] Any combination of the above
+- [x] Dead text preservation
+    - [x] Preserve whitespace
+    - [x] Preserve comments
+    - [x] Any combination of the above
 
 # Usage
 

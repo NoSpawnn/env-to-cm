@@ -33,30 +33,48 @@ macro_rules! format_header {
 
 #[derive(Default)]
 pub struct ParseConfig {
-    pub ignore_comments: bool,
-    pub ignore_whitespace: bool,
+    pub preserve_comments: bool,
+    pub preserve_whitespace: bool,
 }
 
-pub fn parse<'a>(
-    s: &'a str,
-    config: ParseConfig,
-) -> Result<Vec<(String, String)>, self::ParseError<'a>> {
+#[derive(PartialEq, Eq)]
+pub enum EnvToken {
+    Blank,
+    Comment(String),
+    Pair((String, String)),
+}
+
+pub fn parse<'a>(s: &'a str, config: ParseConfig) -> Result<Vec<EnvToken>, self::ParseError<'a>> {
     if s.trim().is_empty() {
         return Err(ParseError::Empty);
     }
 
-    let res: Result<Vec<(String, String)>, ParseError> = s
+    let res: Result<Vec<EnvToken>, ParseError> = s
         .lines()
         .enumerate()
-        .filter(|(_, line)| !line.trim().is_empty() && !line.starts_with('#'))
-        .map(|(idx, line)| {
-            line.split_once('=')
-                .ok_or(ParseError::InvalidFormat((idx, line)))
-                .map(|(key, value)| (key.into(), value.into()))
+        .filter_map(|(idx, line)| {
+            if line.trim_start().starts_with('#') {
+                if config.preserve_comments {
+                    let text = line[line.find('#').unwrap() + 1..].trim_start(); // this is kind of yucky, do I actually need to do this?
+                    Some(Ok(EnvToken::Comment(text.into())))
+                } else {
+                    None
+                }
+            } else if let Some((key, value)) = line.split_once('=') {
+                Some(Ok(EnvToken::Pair((key.into(), value.into()))))
+            } else if line.trim().is_empty() {
+                if config.preserve_whitespace {
+                    Some(Ok(EnvToken::Blank))
+                } else {
+                    None
+                }
+            } else {
+                Some(Err(ParseError::InvalidFormat((idx, line))))
+            }
         })
         .collect();
 
-    Ok(res?)
+    res
 }
 
 pub struct WriteConfig<'a> {
@@ -67,23 +85,21 @@ pub struct WriteConfig<'a> {
 pub fn write_to_file(config: WriteConfig) -> io::Result<()> {
     let mut f = File::create(config.outfile)?;
     let formatted = template(config.template_config);
-    f.write(formatted.as_bytes())?;
+    f.write_all(formatted.as_bytes())?;
     Ok(())
 }
 
 pub struct TemplateConfig {
-    pub values: Vec<(String, String)>,
+    pub values: Vec<EnvToken>,
     pub configmap_name: String,
 }
 
 pub fn template(config: TemplateConfig) -> String {
-    [
-        format_header!(config.configmap_name),
-        config
-            .values
-            .iter()
-            .map(|(k, v)| format!("  {k}: {}\n", if v.is_empty() { "\"\"" } else { v }))
-            .collect(),
-    ]
-    .join("")
+    std::iter::once(format_header!(config.configmap_name))
+        .chain(config.values.iter().map(|t| match t {
+            EnvToken::Blank => String::from("\n"),
+            EnvToken::Comment(c) => format!("  # {c}\n"),
+            EnvToken::Pair((k, v)) => format!("  {k}: {}\n", if v.is_empty() { "\"\"" } else { v }),
+        }))
+        .collect()
 }
