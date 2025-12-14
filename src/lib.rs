@@ -4,12 +4,6 @@ use std::{
     path::Path,
 };
 
-#[derive(Debug)]
-pub enum Error<'a> {
-    InvalidFile,
-    ParseError(ParseError<'a>),
-}
-
 #[derive(Debug, PartialEq, Eq)]
 pub enum ParseError<'a> {
     Empty,
